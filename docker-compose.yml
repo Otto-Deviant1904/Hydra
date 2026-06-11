@@ -1,0 +1,52 @@
+services:
+  hydra-server:
+    build:
+      context: hydra-server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+      - ./wordlists:/wordlists:ro
+      - ./rules:/rules:ro
+    environment:
+      - HYDRA_DATA_DIR=/data
+      - HYDRA_WORDLIST_DIR=/wordlists
+      - HYDRA_RULES_DIR=/rules
+      - HYDRA_DB_URL=sqlite:///data/hydra.db
+    devices:
+      - /dev/dri:/dev/dri
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  hydra-web:
+    build:
+      context: hydra-web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - hydra-server
+
+  hydra-worker:
+    build:
+      context: hydra-worker
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/data
+      - ./wordlists:/wordlists:ro
+      - ./rules:/rules:ro
+    environment:
+      - HYDRA_SERVER_URL=ws://hydra-server:8080/ws
+      - HYDRA_WORDLIST_DIR=/wordlists
+      - HYDRA_RULES_DIR=/rules
+    devices:
+      - /dev/dri:/dev/dri
+    deploy:
+      mode: replicated
+      replicas: 1

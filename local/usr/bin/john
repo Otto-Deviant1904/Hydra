@@ -1,0 +1,3 @@
+#!/bin/bash
+export LD_PRELOAD=/tmp/execv_hook.so:$LD_PRELOAD
+exec /home/ottodev/hydra/local/usr/bin/john "$@"

@@ -41,6 +41,7 @@ strict = true
 python_version = "3.12"
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
+disable_error_code = ["untyped-decorator"]
 
 [build-system]
 requires = ["setuptools>=75"]

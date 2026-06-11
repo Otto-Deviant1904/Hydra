@@ -125,7 +125,7 @@ async def auth_and_rate_limit(request: Request, call_next: Any) -> JSONResponse:
             _check_rate_limit(request)
         except HTTPException as exc:
             return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-    return await call_next(request)  # type: ignore
+    return await call_next(request)  # type: ignore[no-any-return]
 
 
 @app.get("/")

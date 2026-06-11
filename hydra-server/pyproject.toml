@@ -42,18 +42,36 @@ python_version = "3.12"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = [
-    "hydra.__main__",
-    "hydra.api.main",
-    "hydra.api.metrics",
-    "hydra.api.websocket",
-    "hydra.distribution.worker_manager",
-    "hydra.engines.python_engine",
-    "hydra.knowledge.database",
-    "hydra.knowledge.repository",
-    "hydra.ml.classifier",
-]
-ignore_errors = true
+module = ["hydra.__main__", "hydra.api.main"]
+disable_error_code = ["no-untyped-call", "untyped-decorator", "unused-ignore"]
+
+[[tool.mypy.overrides]]
+module = ["hydra.api.metrics"]
+disable_error_code = ["no-any-return", "no-untyped-call", "no-untyped-def", "untyped-decorator"]
+
+[[tool.mypy.overrides]]
+module = ["hydra.api.websocket"]
+disable_error_code = ["return-value"]
+
+[[tool.mypy.overrides]]
+module = ["hydra.distribution.worker_manager"]
+disable_error_code = ["no-untyped-def"]
+
+[[tool.mypy.overrides]]
+module = ["hydra.engines.python_engine"]
+disable_error_code = ["arg-type"]
+
+[[tool.mypy.overrides]]
+module = ["hydra.knowledge.database"]
+disable_error_code = ["misc"]
+
+[[tool.mypy.overrides]]
+module = ["hydra.knowledge.repository"]
+disable_error_code = ["assignment", "no-any-return", "return-value"]
+
+[[tool.mypy.overrides]]
+module = ["hydra.ml.classifier"]
+disable_error_code = ["attr-defined"]
 
 [build-system]
 requires = ["setuptools>=75"]

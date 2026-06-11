@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ class RuleClassifier:
 
     def __init__(self, model_path: str | Path | None = None):
         self.model_path = Path(model_path) if model_path else None
-        self._session = None
+        self._session: Any = None
         self._rules: list[str] = []
         self._loaded = False
         self._load_model()
@@ -25,11 +26,15 @@ class RuleClassifier:
         if self.model_path and self.model_path.exists():
             try:
                 import onnxruntime
-                self._session = onnxruntime.InferenceSession(str(self.model_path))
+                self._session = onnxruntime.InferenceSession(
+                    str(self.model_path),
+                )
                 self._loaded = True
                 logger.info("Loaded ONNX model from %s", self.model_path)
             except ImportError:
-                logger.warning("onnxruntime not installed, using heuristic fallback")
+                logger.warning(
+                    "onnxruntime not installed, using heuristic fallback",
+                )
             except Exception:
                 logger.exception("Failed to load ONNX model")
 
@@ -40,9 +45,13 @@ class RuleClassifier:
 
     def _predict_onnx(self, word: str, top_k: int) -> list[str]:
         try:
+            assert self._session is not None
             input_name = self._session.get_inputs()[0].name
             import numpy as np
-            input_data = np.array([[ord(c) for c in word.ljust(32, "\x00")[:32]]], dtype=np.int64)
+            input_data = np.array(
+                [[ord(c) for c in word.ljust(32, "\x00")[:32]]],
+                dtype=np.int64,
+            )
             outputs = self._session.run(None, {input_name: input_data})
             scores = outputs[0][0]
             top_indices = scores.argsort()[-top_k:][::-1]

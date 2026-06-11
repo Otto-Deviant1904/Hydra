@@ -1,7 +1,9 @@
 """End-to-end test: simulate a full crack session against the API."""
 
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
+from typing import cast
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -17,8 +19,10 @@ from hydra.plugins.loader import PluginLoader
 
 class E2EFakeEngine(Engine):
     name = "hashcat"
+
     def _default_binary(self) -> str:
         return "hashcat"
+
     async def detect(self) -> EngineCapabilities:
         return EngineCapabilities(
             name="hashcat", version="e2e",
@@ -27,9 +31,22 @@ class E2EFakeEngine(Engine):
             supports_opencl=False, supports_cuda=False,
             supports_distribution=False, max_devices=0,
         )
+
     async def identify_hashes(self, hashes: list[str]) -> list[tuple[str, HashType]]:
         return [(h, HashType.MD5) for h in hashes]
-    async def run(self, **kwargs) -> EngineResult:
+
+    async def run(
+        self,
+        hash_type: HashType,
+        hashes: list[str],
+        wordlist: str | Path | None = None,
+        rules: str | Path | None = None,
+        mask: str | None = None,
+        attack_mode: object | None = None,
+        session_dir: str | Path | None = None,
+        devices: list[int] | None = None,
+        timeout: int = 3600,
+    ) -> EngineResult:
         return EngineResult(
             cracked={"5d41402abc4b2a76b9719d911017c592": "hello"},
             speed=1_000_000.0, progress=1.0, duration=0.5,
@@ -38,7 +55,7 @@ class E2EFakeEngine(Engine):
 
 
 @pytest.fixture
-def client():
+def client() -> Iterator[AsyncClient]:
     db_path = Path(tempfile.mktemp(suffix=".db"))
     db = Database(f"sqlite:///{db_path}")
     kb = KnowledgeRepository(db)
@@ -49,11 +66,11 @@ def client():
     app.state.chunk_manager = None
     app.state.plugins = PluginLoader("/nonexistent")
     setup_metrics(app)
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    yield AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
 @pytest.mark.asyncio
-async def test_root(client):
+async def test_root(client: AsyncClient) -> None:
     resp = await client.get("/")
     assert resp.status_code == 200
     data = resp.json()
@@ -61,21 +78,21 @@ async def test_root(client):
 
 
 @pytest.mark.asyncio
-async def test_health(client):
+async def test_health(client: AsyncClient) -> None:
     resp = await client.get("/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
 
 
 @pytest.mark.asyncio
-async def test_engines(client):
+async def test_engines(client: AsyncClient) -> None:
     resp = await client.get("/engines")
     assert resp.status_code == 200
     assert "hashcat" in resp.json()["engines"]
 
 
 @pytest.mark.asyncio
-async def test_crack_endpoint(client):
+async def test_crack_endpoint(client: AsyncClient) -> None:
     resp = await client.post("/crack", json={
         "hashes": ["5d41402abc4b2a76b9719d911017c592"],
     })
@@ -87,10 +104,11 @@ async def test_crack_endpoint(client):
 
 
 @pytest.mark.asyncio
-async def test_crack_unknown_hash_type(client):
-    async def unknown_identify(hashes):
+async def test_crack_unknown_hash_type(client: AsyncClient) -> None:
+    async def unknown_identify(hashes: list[str]) -> list[tuple[str, HashType]]:
         return [(hashes[0], HashType.UNKNOWN)]
-    app.state.engines["hashcat"].identify_hashes = unknown_identify
+    hashcat_engine = cast(E2EFakeEngine, app.state.engines["hashcat"])
+    setattr(hashcat_engine, "identify_hashes", unknown_identify)
     resp = await client.post("/crack", json={
         "hashes": ["invalid"],
     })
@@ -98,7 +116,7 @@ async def test_crack_unknown_hash_type(client):
 
 
 @pytest.mark.asyncio
-async def test_crack_no_engines(client):
+async def test_crack_no_engines(client: AsyncClient) -> None:
     app.state.engines = {}
     resp = await client.post("/crack", json={
         "hashes": ["5d41402abc4b2a76b9719d911017c592"],
@@ -107,7 +125,7 @@ async def test_crack_no_engines(client):
 
 
 @pytest.mark.asyncio
-async def test_metrics_endpoint(client):
+async def test_metrics_endpoint(client: AsyncClient) -> None:
     resp = await client.get("/metrics")
     assert resp.status_code == 200
     assert "hydra_requests_total" in resp.text

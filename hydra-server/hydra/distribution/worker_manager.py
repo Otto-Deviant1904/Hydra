@@ -21,7 +21,7 @@ class WorkerState:
 
 
 class WorkerManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self._workers: dict[str, WorkerState] = {}
         self._max_concurrent_per_worker = 1
 

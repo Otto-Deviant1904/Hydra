@@ -192,7 +192,7 @@ class PythonEngine(Engine):
         i = 0
         while i < len(mask):
             if i + 1 < len(mask) and mask[i:i+2] in charsets:
-                tokens.append(charsets[mask[i:i+2]])
+                tokens.append(list(charsets[mask[i:i+2]]))
                 i += 2
             else:
                 tokens.append([mask[i]])

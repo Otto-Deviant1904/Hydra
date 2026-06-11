@@ -16,21 +16,25 @@ class JtrEngine(Engine):
         return "john"
 
     async def detect(self) -> EngineCapabilities:
-        proc = await asyncio.create_subprocess_exec(
-            self.binary, "--version",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, _ = await proc.communicate()
-        version = stdout.decode().strip() or "unknown"
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                self.binary, "--version",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=2)
+            version = stdout.decode().strip() or "unknown"
 
-        proc2 = await asyncio.create_subprocess_exec(
-            self.binary, "--list=formats",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout2, stderr2 = await proc2.communicate()
-        out = stdout2.decode() + stderr2.decode()
+            proc2 = await asyncio.create_subprocess_exec(
+                self.binary, "--list=formats",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout2, stderr2 = await asyncio.wait_for(proc2.communicate(), timeout=2)
+            out = stdout2.decode() + stderr2.decode()
+        except (FileNotFoundError, OSError, TimeoutError):
+            version = "unavailable"
+            out = ""
 
         return EngineCapabilities(
             name="john",

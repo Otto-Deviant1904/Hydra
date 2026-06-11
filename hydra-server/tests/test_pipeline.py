@@ -11,8 +11,10 @@ from hydra.planner.heuristic import AttackPlan, HeuristicPlanner, PhaseConfig
 
 class FakeEngine(Engine):
     name = "fake"
+
     def _default_binary(self) -> str:
         return "fake"
+
     async def detect(self) -> EngineCapabilities:
         return EngineCapabilities(
             name="fake", version="1.0",
@@ -21,9 +23,22 @@ class FakeEngine(Engine):
             supports_opencl=False, supports_cuda=False,
             supports_distribution=False, max_devices=0,
         )
+
     async def identify_hashes(self, hashes: list[str]) -> list[tuple[str, HashType]]:
         return [(h, HashType.MD5) for h in hashes]
-    async def run(self, **kwargs) -> EngineResult:
+
+    async def run(
+        self,
+        hash_type: HashType,
+        hashes: list[str],
+        wordlist: str | Path | None = None,
+        rules: str | Path | None = None,
+        mask: str | None = None,
+        attack_mode: AttackMode = AttackMode.STRAIGHT,
+        session_dir: str | Path | None = None,
+        devices: list[int] | None = None,
+        timeout: int = 3600,
+    ) -> EngineResult:
         return EngineResult(
             cracked={"hash1": "password123"},
             speed=1000.0, progress=1.0, duration=1.0,
@@ -32,13 +47,13 @@ class FakeEngine(Engine):
 
 
 class TestPipelineExecutor:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.engine = FakeEngine()
         self.planner = HeuristicPlanner({"fake": self.engine})
         self.workdir = Path(tempfile.mkdtemp())
 
     @pytest.mark.asyncio
-    async def test_executor_runs_phases(self):
+    async def test_executor_runs_phases(self) -> None:
         config = SessionConfig(
             hash_type=HashType.MD5,
             hashes=["hash1", "hash2"],
@@ -53,7 +68,7 @@ class TestPipelineExecutor:
         assert len(result.results) >= 1
 
     @pytest.mark.asyncio
-    async def test_executor_stops_when_all_cracked(self):
+    async def test_executor_stops_when_all_cracked(self) -> None:
         config = SessionConfig(
             hash_type=HashType.MD5,
             hashes=["hash1"],
@@ -67,7 +82,7 @@ class TestPipelineExecutor:
         assert result.cracked_count == 1
 
     @pytest.mark.asyncio
-    async def test_executor_phase_summary(self):
+    async def test_executor_phase_summary(self) -> None:
         config = SessionConfig(
             hash_type=HashType.MD5,
             hashes=["hash1"],

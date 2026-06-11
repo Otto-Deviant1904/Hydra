@@ -87,7 +87,7 @@ async def ws_handler(websocket: WebSocket) -> None:
             websocket.app.state.worker_manager.unregister(worker_id)
 
 
-def _chunk_to_dict(chunk: Any) -> dict[str, Any]:
+def _chunk_to_dict(chunk: Any) -> dict[str, Any] | None:
     if chunk is None:
         return None
     return {

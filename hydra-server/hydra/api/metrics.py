@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, cast
 
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
@@ -10,7 +10,7 @@ from fastapi.responses import Response
 class MetricsMiddleware:
     """Minimal Prometheus-compatible metrics collection."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._request_count = 0
         self._crack_count = 0
         self._total_duration = 0.0
@@ -18,7 +18,7 @@ class MetricsMiddleware:
     async def __call__(self, request: Request, call_next: Any) -> Response:
         self._request_count += 1
         start = time.monotonic()
-        response = await call_next(request)
+        response = cast(Response, await call_next(request))
         duration = time.monotonic() - start
         self._total_duration += duration
         if request.url.path == "/crack" and request.method == "POST":

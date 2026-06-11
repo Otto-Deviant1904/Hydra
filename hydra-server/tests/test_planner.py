@@ -17,11 +17,11 @@ class FakeEngine(HashcatEngine):
 
 
 class TestHeuristicPlanner:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.engine = FakeEngine()
         self.planner = HeuristicPlanner({"hashcat": self.engine})
 
-    def test_plan_fast_hash(self):
+    def test_plan_fast_hash(self) -> None:
         config = SessionConfig(
             hash_type=HashType.MD5,
             hashes=["hash1", "hash2"],
@@ -32,7 +32,7 @@ class TestHeuristicPlanner:
         assert plan.phases[0].phase == AttackPhase.DICTIONARY
         assert plan.hash_type == HashType.MD5
 
-    def test_plan_slow_hash_has_fewer_phases(self):
+    def test_plan_slow_hash_has_fewer_phases(self) -> None:
         config = SessionConfig(
             hash_type=HashType.BCRYPT,
             hashes=["hash1"],
@@ -41,7 +41,7 @@ class TestHeuristicPlanner:
         plan = self.planner.plan(config)
         assert len(plan.phases) <= 3
 
-    def test_plan_medium_hash(self):
+    def test_plan_medium_hash(self) -> None:
         config = SessionConfig(
             hash_type=HashType.SHA256,
             hashes=["hash1"],
@@ -51,7 +51,7 @@ class TestHeuristicPlanner:
         assert len(plan.phases) <= 4
         assert plan.phases[0].priority == 1
 
-    def test_plan_no_wordlist_still_has_mask_phases(self):
+    def test_plan_no_wordlist_still_has_mask_phases(self) -> None:
         config = SessionConfig(
             hash_type=HashType.MD5,
             hashes=["hash1"],
@@ -60,7 +60,7 @@ class TestHeuristicPlanner:
         mask_phases = [p for p in plan.phases if p.phase == AttackPhase.MASK]
         assert len(mask_phases) > 0
 
-    def test_plan_respects_max_depth(self):
+    def test_plan_respects_max_depth(self) -> None:
         config = SessionConfig(
             hash_type=HashType.MD5,
             hashes=["hash1"],
@@ -71,7 +71,7 @@ class TestHeuristicPlanner:
         assert len(plan.phases) >= 3  # fast hash always gets 6 phases
         # max_planner_depth affects timeout, not phase count
 
-    def test_plan_phases_have_timeouts(self):
+    def test_plan_phases_have_timeouts(self) -> None:
         config = SessionConfig(
             hash_type=HashType.NTLM,
             hashes=["hash1"],

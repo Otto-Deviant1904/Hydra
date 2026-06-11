@@ -34,9 +34,10 @@ class KnowledgeRepository:
                     }),
                 )
                 s.add(record)
+                s.flush()
 
-            record.cracked_count = session.cracked_count
-            record.finished_at = session.finished_at or datetime.now(UTC)
+            record.cracked_count = session.cracked_count  # type: ignore[assignment]
+            record.finished_at = session.finished_at or datetime.now(UTC)  # type: ignore[assignment]
             s.commit()
             logger.debug(
                 "Saved session %s (%d/%d)",
@@ -71,9 +72,9 @@ class KnowledgeRepository:
                 )
                 s.add(record)
             else:
-                record.hits += 1 if hit else 0
-                record.attempts += 1
-                record.last_seen = datetime.now(UTC)
+                record.hits += 1 if hit else 0  # type: ignore[assignment]
+                record.attempts += 1  # type: ignore[assignment]
+                record.last_seen = datetime.now(UTC)  # type: ignore[assignment]
             s.commit()
 
     def get_best_rules(self, hash_type_value: str, limit: int = 20) -> list[tuple[str, float]]:
@@ -83,8 +84,8 @@ class KnowledgeRepository:
                 .filter(RuleHitRecord.hash_type == hash_type_value, RuleHitRecord.attempts > 10)
                 .all()
             )
-            scored = [
-                (r.rule, r.hits / max(r.attempts, 1))
+            scored: list[tuple[str, float]] = [
+                (str(r.rule), float(r.hits) / max(float(r.attempts), 1.0))
                 for r in records
             ]
             scored.sort(key=lambda x: x[1], reverse=True)

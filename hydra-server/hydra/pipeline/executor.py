@@ -100,7 +100,10 @@ class PipelineExecutor:
         )
 
         if not result.cracked and result.exit_code != 0 and len(self.plan.engines) > 1:
-            logger.warning("Engine '%s' failed (exit=%d), trying fallback", engine.name, result.exit_code)
+            logger.warning(
+                "Engine '%s' failed (exit=%d), trying fallback",
+                engine.name, result.exit_code,
+            )
             for eng_name, fallback_eng in self.plan.engines.items():
                 if eng_name == phase_cfg.engine_name or eng_name == engine.name:
                     continue

@@ -3,10 +3,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import re
-import tempfile
 from itertools import product
 from pathlib import Path
-from typing import Optional
 
 from hydra.engines.base import Engine, EngineCapabilities, EngineResult
 from hydra.models.base import AttackMode, HashType
@@ -61,12 +59,12 @@ class PythonEngine(Engine):
         self,
         hash_type: HashType,
         hashes: list[str],
-        wordlist: Optional[str | Path] = None,
-        rules: Optional[str | Path] = None,
-        mask: Optional[str] = None,
+        wordlist: str | Path | None = None,
+        rules: str | Path | None = None,
+        mask: str | None = None,
         attack_mode: AttackMode = AttackMode.STRAIGHT,
-        session_dir: Optional[str | Path] = None,
-        devices: Optional[list[int]] = None,
+        session_dir: str | Path | None = None,
+        devices: list[int] | None = None,
         timeout: int = 3600,
     ) -> EngineResult:
         start = asyncio.get_event_loop().time()
@@ -134,7 +132,7 @@ class PythonEngine(Engine):
                     result.append(transformed)
         return result
 
-    def _apply_rule(self, word: str, rule: str) -> Optional[str]:
+    def _apply_rule(self, word: str, rule: str) -> str | None:
         """Apply a simplified hashcat-style rule to a word."""
         chars: list[str] = list(word)
         i = 0
@@ -171,14 +169,19 @@ class PythonEngine(Engine):
                         last = chars[-1]
                         for _ in range(len(chars)):
                             chars.append(last)
-                case _: pass
+                case _:
+                    pass
             i += 1
         return "".join(chars)
 
     def _expand_mask(self, mask: str) -> list[str]:
         """Expand a hashcat-style mask into concrete candidates."""
         charsets = {
-            "?a": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:',.<>?/`~",
+            "?a": (
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "0123456789!@#$%^&*()-_=+[]{}|;:',.<>?/`~"
+            ),
             "?d": "0123456789",
             "?l": "abcdefghijklmnopqrstuvwxyz",
             "?u": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",

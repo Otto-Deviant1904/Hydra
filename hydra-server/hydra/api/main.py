@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -28,7 +28,6 @@ from hydra.models.base import HashType, Session, SessionConfig
 from hydra.pipeline.executor import PipelineExecutor
 from hydra.planner.heuristic import HeuristicPlanner
 from hydra.plugins.loader import PluginLoader
-
 
 _API_KEY = os.environ.get("HYDRA_API_KEY", "")
 _RATE_LIMIT = int(os.environ.get("HYDRA_RATE_LIMIT", "100"))

@@ -7,7 +7,6 @@ import click
 
 from hydra.engines.hashcat import HashcatEngine
 from hydra.engines.jtr import JtrEngine
-from hydra.engines.python_engine import PythonEngine
 from hydra.engines.selector import format_engine_table, select_engine
 from hydra.models.base import HashType
 

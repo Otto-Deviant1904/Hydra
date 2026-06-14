@@ -2,19 +2,32 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { crackHashes, CrackResponse } from '../api/client'
 
+const MAX_HASHES = 1000
+
 export default function CrackPage() {
   const [hashes, setHashes] = useState('')
   const [hashType, setHashType] = useState('')
   const [wordlist, setWordlist] = useState('')
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   const mutation = useMutation({
     mutationFn: crackHashes,
   })
 
+  const hashList = hashes.split('\n').map(h => h.trim()).filter(Boolean)
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const hashList = hashes.split('\n').map(h => h.trim()).filter(Boolean)
-    if (!hashList.length) return
+    setValidationError(null)
+
+    if (!hashList.length) {
+      setValidationError('Please enter at least one hash.')
+      return
+    }
+    if (hashList.length > MAX_HASHES) {
+      setValidationError(`Too many hashes — maximum is ${MAX_HASHES.toLocaleString()} per request (you entered ${hashList.length.toLocaleString()}).`)
+      return
+    }
 
     mutation.mutate({
       hashes: hashList,
@@ -29,12 +42,23 @@ export default function CrackPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Hashes (one per line)</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm text-gray-400">Hashes (one per line)</label>
+            {hashList.length > 0 && (
+              <span className={`text-xs ${hashList.length > MAX_HASHES ? 'text-red-400' : 'text-gray-500'}`}>
+                {hashList.length.toLocaleString()} / {MAX_HASHES.toLocaleString()}
+              </span>
+            )}
+          </div>
           <textarea
-            className="w-full h-40 bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm font-mono text-white placeholder-gray-600 focus:border-hydra-500 focus:outline-none"
+            className={`w-full h-40 bg-gray-900 border rounded-lg p-3 text-sm font-mono text-white placeholder-gray-600 focus:outline-none ${
+              hashList.length > MAX_HASHES
+                ? 'border-red-600 focus:border-red-500'
+                : 'border-gray-700 focus:border-hydra-500'
+            }`}
             placeholder="5d41402abc4b2a76b9719d911017c592&#10;$2y$10$..."
             value={hashes}
-            onChange={e => setHashes(e.target.value)}
+            onChange={e => { setHashes(e.target.value); setValidationError(null) }}
           />
         </div>
 
@@ -61,12 +85,18 @@ export default function CrackPage() {
 
         <button
           type="submit"
-          disabled={mutation.isPending || !hashes.trim()}
+          disabled={mutation.isPending || !hashes.trim() || hashList.length > MAX_HASHES}
           className="bg-hydra-600 hover:bg-hydra-700 disabled:bg-gray-700 disabled:text-gray-500 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           {mutation.isPending ? 'Cracking...' : 'Start Attack'}
         </button>
       </form>
+
+      {validationError && (
+        <div className="bg-yellow-900/50 border border-yellow-700 rounded-lg p-4 text-sm text-yellow-300">
+          {validationError}
+        </div>
+      )}
 
       {mutation.isError && (
         <div className="bg-red-900/50 border border-red-800 rounded-lg p-4 text-sm text-red-300">

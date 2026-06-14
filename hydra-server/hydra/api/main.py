@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from hydra.api.metrics import setup_metrics
 from hydra.api.websocket import ws_handler
@@ -29,8 +29,11 @@ from hydra.pipeline.executor import PipelineExecutor
 from hydra.planner.heuristic import HeuristicPlanner
 from hydra.plugins.loader import PluginLoader
 
+logger = logging.getLogger(__name__)
+
 _API_KEY = os.environ.get("HYDRA_API_KEY", "")
 _RATE_LIMIT = int(os.environ.get("HYDRA_RATE_LIMIT", "100"))
+_MAX_HASHES = int(os.environ.get("HYDRA_MAX_HASHES", "1000"))
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
 
 
@@ -53,12 +56,34 @@ def _check_rate_limit(request: Request) -> None:
     bucket.append(now)
 
 
+_MAX_HASH_LENGTH = 512
+_MAX_TIMEOUT = 86400  # 24 hours
+
+
 class CrackRequest(BaseModel):
     hashes: list[str]
     hash_type: str | None = None
     wordlists: list[str] = []
-    timeout: int = 3600
+    timeout: int = Field(default=3600, ge=1, le=_MAX_TIMEOUT)
     distribution: bool = False
+
+    @field_validator("hashes")
+    @classmethod
+    def validate_hashes(cls, v: list[str]) -> list[str]:
+        for h in v:
+            if not h or not h.strip():
+                raise ValueError("hashes must not contain empty strings")
+            if len(h) > _MAX_HASH_LENGTH:
+                raise ValueError(f"hash exceeds maximum length of {_MAX_HASH_LENGTH} characters")
+        return [h.strip() for h in v]
+
+    @field_validator("wordlists")
+    @classmethod
+    def validate_wordlists(cls, v: list[str]) -> list[str]:
+        for w in v:
+            if len(w) > 255:
+                raise ValueError("wordlist path exceeds maximum length of 255 characters")
+        return v
 
 
 class CrackResponse(BaseModel):
@@ -103,7 +128,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         try:
             plugin.on_startup(app)
         except Exception:
-            logging.getLogger(__name__).exception("Plugin %s failed to start", plugin.name)
+            logger.exception("Plugin %s failed to start", plugin.name)
 
     yield
 
@@ -111,7 +136,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         try:
             plugin.on_shutdown(app)
         except Exception:
-            logging.getLogger(__name__).exception("Plugin %s failed to shutdown", plugin.name)
+            logger.exception("Plugin %s failed to shutdown", plugin.name)
 
 
 app = FastAPI(title="HYDRA", version="0.1.0", lifespan=lifespan)
@@ -148,6 +173,15 @@ async def list_engines() -> dict[str, list[str]]:
 async def crack(req: CrackRequest) -> CrackResponse:
     if not app.state.engines:
         raise HTTPException(status_code=503, detail="No cracking engines available")
+
+    if not req.hashes:
+        raise HTTPException(status_code=400, detail="At least one hash is required")
+
+    if len(req.hashes) > _MAX_HASHES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many hashes: {len(req.hashes)} submitted, maximum allowed is {_MAX_HASHES}",
+        )
 
     if req.hash_type:
         htype = HashType(req.hash_type)
@@ -188,7 +222,7 @@ async def crack(req: CrackRequest) -> CrackResponse:
                     "hash_type": r.hash_type.value, "phase": r.phase.name,
                 })
         except Exception:
-            logging.getLogger(__name__).exception("Plugin %s failed to process result", plugin.name)
+            logger.exception("Plugin %s failed to process result", plugin.name)
 
     return CrackResponse(
         session_id=session_id,

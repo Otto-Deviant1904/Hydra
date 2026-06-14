@@ -21,10 +21,41 @@ export default function SessionsPage() {
         />
       </div>
 
-      {sessions.isLoading && <p className="text-gray-500">Loading...</p>}
+      {sessions.isLoading && (
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className="bg-gray-900 rounded-lg border border-gray-800 p-4 flex items-center justify-between animate-pulse"
+            >
+              <div className="space-y-2">
+                <div className="w-48 h-4 bg-gray-700 rounded" />
+                <div className="w-16 h-3 bg-gray-800 rounded" />
+              </div>
+              <div className="space-y-2 text-right">
+                <div className="w-12 h-4 bg-gray-700 rounded ml-auto" />
+                <div className="w-24 h-3 bg-gray-800 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {sessions.data?.sessions.length === 0 && (
-        <p className="text-gray-500">No sessions yet.</p>
+      {sessions.isError && (
+        <div className="bg-red-900/50 border border-red-800 rounded-lg p-4 text-sm text-red-300">
+          Failed to load sessions:{' '}
+          {sessions.error instanceof Error ? sessions.error.message : 'Unknown error'}
+        </div>
+      )}
+
+      {!sessions.isLoading && sessions.data?.sessions.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="text-4xl mb-3">🔍</div>
+          <p className="text-gray-400 font-medium">No sessions yet</p>
+          <p className="text-gray-600 text-sm mt-1">
+            Submit hashes on the <strong className="text-gray-400">Crack</strong> page to get started.
+          </p>
+        </div>
       )}
 
       <div className="space-y-2">
